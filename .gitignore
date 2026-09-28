@@ -1,0 +1,11 @@
+config.local.json
+*.local.json
+output/
+_work/
+__pycache__/
+*.pyc
+*.wav
+*.mp3
+*.m4a
+*.mp4
+*.mkv

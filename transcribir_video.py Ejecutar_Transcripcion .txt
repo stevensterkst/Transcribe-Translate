@@ -1,0 +1,116 @@
+import os
+import sys
+import requests
+from faster_whisper import WhisperModel
+import yt_dlp
+
+# --- CONFIGURACIÓN ---
+INPUT = "https://www.youtube.com/watch?v=tKvJf3GRIxw"  # URL o ruta a archivo local
+MODELO_WHISPER = "small"       # "tiny", "base", "small", "medium", "large-v3"
+MODELO_OLLAMA = "llama3.2"     # El modelo que tengas en Ollama
+CARPETA_SALIDA = os.path.join(os.path.expanduser("~"), "Downloads")
+# ---------------------
+
+def es_url(texto):
+    return texto.startswith("http://") or texto.startswith("https://")
+
+def descargar_audio(url, carpeta_salida):
+    archivo_audio = os.path.join(carpeta_salida, "audio_temp.mp3")
+    opciones = {
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192'
+        }],
+        'outtmpl': archivo_audio.replace('.mp3', ''),
+        'quiet': False,
+        'js_runtimes': {'deno': {}},
+    }
+    with yt_dlp.YoutubeDL(opciones) as ydl:
+        ydl.download([url])
+    return archivo_audio
+
+def main():
+    os.makedirs(CARPETA_SALIDA, exist_ok=True)
+    
+    if es_url(INPUT):
+        print("Detectada URL. Descargando audio...")
+        try:
+            archivo_audio = descargar_audio(INPUT, CARPETA_SALIDA)
+            print(f"Audio descargado en: {archivo_audio}")
+            descargado = True
+        except Exception as e:
+            print(f"Error al descargar: {e}")
+            sys.exit(1)
+    else:
+        if not os.path.isfile(INPUT):
+            print(f"Error: El archivo '{INPUT}' no existe.")
+            sys.exit(1)
+        archivo_audio = INPUT
+        print(f"Usando archivo local: {archivo_audio}")
+        descargado = False
+
+    # Transcribir
+    print(f"Transcribiendo con Whisper '{MODELO_WHISPER}'...")
+    try:
+        model = WhisperModel(MODELO_WHISPER, device="cpu", compute_type="int8")
+        segments, info = model.transcribe(archivo_audio, beam_size=5)
+        transcripcion = " ".join([seg.text for seg in segments])
+        idioma = info.language
+        print(f"Transcripción completada. Idioma detectado: {idioma}")
+    except Exception as e:
+        print(f"Error en transcripción: {e}")
+        sys.exit(1)
+
+    # Resumen y traducción
+    print("Generando resumen y traducción...")
+    prompt = f"""The following is a transcript in language code '{idioma}'.
+    
+    1. Provide a concise summary in the SAME language as the transcript.
+    2. Provide an English translation of that summary.
+    
+    Format your response as:
+    SUMMARY (original language):
+    <summary>
+    
+    ENGLISH TRANSLATION:
+    <translation>
+    
+    Transcript:
+    ---
+    {transcripcion}
+    ---
+    """
+    
+    try:
+        r = requests.post(
+            "http://localhost:11434/api/generate",
+            json={"model": MODELO_OLLAMA, "prompt": prompt, "stream": False},
+            timeout=600
+        )
+        r.raise_for_status()
+        resultado = r.json()["response"]
+    except Exception as e:
+        print(f"Error con Ollama: {e}")
+        sys.exit(1)
+
+    # Guardar resultados
+    archivo_salida = os.path.join(CARPETA_SALIDA, "resultado_transcripcion.txt")
+    with open(archivo_salida, "w", encoding="utf-8") as f:
+        f.write("=== TRANSCRIPCIÓN ===\n\n")
+        f.write(transcripcion)
+        f.write("\n\n\n=== RESUMEN Y TRADUCCIÓN ===\n\n")
+        f.write(resultado)
+    
+    # Limpiar archivo temporal si se descargó
+    if descargado and os.path.exists(archivo_audio):
+        os.remove(archivo_audio)
+        print("Archivo de audio temporal eliminado.")
+
+    print(f"\n✅ Proceso completado. Resultado guardado en: {archivo_salida}")
+    print("\n--- VISTA PREVIA ---")
+    print(resultado)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,4 @@
+async function activeTab(){const [tab]=await chrome.tabs.query({active:true,currentWindow:true});return tab;}
+document.getElementById("transcript").onclick=async()=>{const tab=await activeTab();const result=await chrome.tabs.sendMessage(tab.id,{type:"EXTRACT_TRANSCRIPT"});const payload={...result,captured_at:new Date().toISOString()};chrome.runtime.sendMessage({type:"SEND_TRANSCRIPT",payload},r=>{document.getElementById("status").textContent=r?.ok?"Transcript sent to desktop bridge.":(r?.error||"Bridge error");});};
+document.getElementById("capture").onclick=async()=>{await chrome.runtime.sendMessage({type:"START_TAB_CAPTURE"});document.getElementById("status").textContent="Capture started.";};
+document.getElementById("stop").onclick=async()=>{await chrome.runtime.sendMessage({type:"STOP_TAB_CAPTURE"});document.getElementById("status").textContent="Stopping and sending audio to desktop bridge...";};

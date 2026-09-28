@@ -1,0 +1,33 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260923110720
+Username: ILLU-MINATI\erick
+RunAs User: ILLU-MINATI\erick
+Configuration Name: 
+Machine: ILLU-MINATI (Microsoft Windows NT 10.0.26200.0)
+Host Application: powershell -ExecutionPolicy Bypass -File .\verify-final.ps1
+Process ID: 28276
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== SS TRANSCRIBE-TRANSLATE FINAL SOURCE/BUILD AUDIT ===
+
+
+
+PASS: Python compileall + unit tests
+
+PASS: required local runtime imports
+
+core\asr.py:129:            from faster_whisper import WhisperModel, BatchedInferencePipeline
+=== AUDIT FAIL ===
+Obsolete runtime import found
+**********************
+Windows PowerShell transcript end
+End time: 20260923110724
+**********************

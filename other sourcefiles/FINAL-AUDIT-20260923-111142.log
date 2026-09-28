@@ -1,0 +1,36 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260923111142
+Username: ILLU-MINATI\erick
+RunAs User: ILLU-MINATI\erick
+Configuration Name: 
+Machine: ILLU-MINATI (Microsoft Windows NT 10.0.26200.0)
+Host Application: powershell -ExecutionPolicy Bypass -File .\verify-final.ps1
+Process ID: 39040
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== SS TRANSCRIBE-TRANSLATE FINAL SOURCE/BUILD AUDIT ===
+
+
+
+PASS: Python compileall + unit tests
+
+PASS: required local runtime imports
+PASS: architecture checks
+
+
+Windows app built: C:\Users\erick\OpenAI\Transcribe-translate\OpenAI\transcribe-translate\dist\SS-Transcribe-Translate\SS-Transcribe-Translate.exe
+PS>TerminatingError(Test-Path): "A parameter cannot be found that matches parameter name 'and'."
+=== AUDIT FAIL ===
+A parameter cannot be found that matches parameter name 'and'.
+**********************
+Windows PowerShell transcript end
+End time: 20260923111314
+**********************

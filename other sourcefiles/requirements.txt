@@ -1,0 +1,6 @@
+faster-whisper>=1.2,<2
+ctranslate2>=4.8,<5
+requests>=2.31,<3
+numpy>=2,<3
+sherpa-onnx>=1.13.8,<2
+yt-dlp[default]>=2026.8,<2027

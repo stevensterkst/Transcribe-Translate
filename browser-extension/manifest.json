@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "SS Transcribe-Translate Browser Bridge",
+  "version": "0.1.0",
+  "description": "User-controlled transcript extraction and optional Chrome/Edge tab-audio capture.",
+  "permissions": ["activeTab", "scripting", "storage", "tabCapture", "offscreen"],
+  "host_permissions": ["http://127.0.0.1:8766/*"],
+  "action": {"default_popup": "popup.html", "default_title": "SS Transcribe-Translate"},
+  "background": {"service_worker": "service-worker.js", "type": "module"},
+  "content_scripts": [{"matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_idle"}],
+  "options_page": "options.html"
+}

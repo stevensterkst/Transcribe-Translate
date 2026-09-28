@@ -1,0 +1,29 @@
+name: Windows build
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        shell: pwsh
+        run: python -m pip install -r transcribe-translate/requirements.txt pyinstaller
+      - name: Final source and Windows build audit
+        shell: pwsh
+        run: |
+          Set-Location transcribe-translate
+          .\verify-final.ps1
+      - name: Upload EXE bundle and audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: SS-Transcribe-Translate-Windows
+          path: |
+            transcribe-translate/dist/SS-Transcribe-Translate/
+            transcribe-translate/FINAL-AUDIT-*.log
+            transcribe-translate/SHA256.txt

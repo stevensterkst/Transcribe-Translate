@@ -1,0 +1,20 @@
+{
+  "asr": {
+    "backend": "local",
+    "local_model": "large-v3",
+    "language": "auto",
+    "diarize": false,
+    "device": "auto",
+    "compute_type": "auto"
+  },
+  "text": {
+    "provider": "ollama",
+    "ollama_url": "http://127.0.0.1:11434",
+    "ollama_model": "qwen3:1.7b",
+    "openai_model": "gpt-5.6-luna",
+    "target_language": "en"
+  },
+  "paths": {
+    "output_dir": "output"
+  }
+}

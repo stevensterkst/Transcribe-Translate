@@ -1,0 +1,1 @@
+async function load(){const x=await chrome.storage.local.get(["bridgeUrl","bridgeToken"]);url.value=x.bridgeUrl||"http://127.0.0.1:8766";token.value=x.bridgeToken||"";} save.onclick=async()=>{await chrome.storage.local.set({bridgeUrl:url.value.trim(),bridgeToken:token.value.trim()});status.textContent="Saved.";}; load();

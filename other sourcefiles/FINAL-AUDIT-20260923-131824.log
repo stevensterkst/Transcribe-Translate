@@ -1,0 +1,41 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260923131824
+Username: ILLU-MINATI\erick
+RunAs User: ILLU-MINATI\erick
+Configuration Name: 
+Machine: ILLU-MINATI (Microsoft Windows NT 10.0.26200.0)
+Host Application: powershell -ExecutionPolicy Bypass -File .\verify-final.ps1
+Process ID: 35660
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== SS TRANSCRIBE-TRANSLATE FINAL SOURCE/BUILD AUDIT ===
+
+
+
+PASS: Python compileall + unit tests
+
+PASS: required local runtime imports
+PASS: architecture checks
+PASS: agreed feature coverage checks
+NOTE: tracked config has no range section; runtime defaults to full.
+PASS: range, launcher, console and AI coordination checks
+PASS: source/feature verification complete; starting clean Windows EXE build
+A previous SS-Transcribe-Translate instance is running; closing it for a clean rebuild...
+
+Windows app built: C:\Users\erick\OpenAI\Transcribe-translate\OpenAI\transcribe-translate\dist\SS-Transcribe-Translate\SS-Transcribe-Translate.exe
+PASS: Windows EXE built
+EXE: C:\Users\erick\OpenAI\Transcribe-translate\OpenAI\transcribe-translate\dist\SS-Transcribe-Translate\SS-Transcribe-Translate.exe
+SHA256: 3B20F80F581F1E246C73BDFC22B9EE0837C9F78C049CEDB9FE289578746C0AA4
+=== AUDIT PASS ===
+**********************
+Windows PowerShell transcript end
+End time: 20260923131954
+**********************

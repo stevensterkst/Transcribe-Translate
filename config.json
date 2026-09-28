@@ -1,0 +1,42 @@
+{
+  "asr": {
+    "local_model": "base",
+    "language": "auto",
+    "compute_type": "int8",
+    "word_timestamps": false,
+    "hotwords": ""
+  },
+  "text": {
+    "ollama_url": "http://127.0.0.1:11434",
+    "ollama_model": "phi4-mini:3.8b",
+    "ollama_num_predict": 1024,
+    "analysis_language": "source",
+    "translate_transcript": false,
+    "analysis": false,
+    "target_language": "English"
+  },
+  "analysis": {
+    "search_query": "",
+    "top_terms": 30,
+    "analysis": false
+  },
+  "qa": {
+    "question": "",
+    "language": "English"
+  },
+  "diarization": {
+    "enabled": false,
+    "segmentation_model": "",
+    "embedding_model": "",
+    "num_speakers": 0,
+    "cluster_threshold": 0.5
+  },
+  "paths": {
+    "output_dir": "~/Downloads/Transcribe-Translate",
+    "ytdlp_path": ""
+  },
+  "range": {
+    "mode": "full",
+    "value": 0
+  }
+}

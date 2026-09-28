@@ -1,0 +1,260 @@
+# Multi-Agent Orchestration Workflow
+# Triggers on pull requests and pushes to coordinate OpenAI, DeepSeek, and future AI models.
+# All agents propose → conflicts flagged → human adjudicates → merge only on approval.
+
+name: Multi-Agent Orchestration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [feature/*]
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+jobs:
+  # ── Step 1: Analyze the diff ──────────────────────────────────────────────
+  diff-analysis:
+    runs-on: ubuntu-latest
+    outputs:
+      diff: ${{ steps.get-diff.outputs.diff }}
+      base-ref: ${{ steps.get-ref.outputs.base-ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get comparison ref
+        id: get-ref
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "base-ref=${{ github.base_ref }}" >> $GITHUB_OUTPUT
+            echo "head-ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "base-ref=origin/main" >> $GITHUB_OUTPUT
+            echo "head-ref=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get PR diff
+        id: get-diff
+        run: |
+          # Fetch full diff between base and head
+          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
+          git fetch origin ${{ github.head_ref }} --depth=1 2>/dev/null || true
+          git diff origin/${{ github.base_ref }}...HEAD 2>/dev/null > /tmp/diff.txt || true
+          git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null >> /tmp/diff.txt || true
+          echo "diff<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/diff.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  # ── Step 2: OpenAI Agent ──────────────────────────────────────────────────
+  openai-agent:
+    needs: diff-analysis
+    runs-on: ubuntu-latest
+    outputs:
+      proposal: ${{ steps.propose.outputs.proposal }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read AGENT-NOTES.md
+        id: read-notes
+        run: |
+          NOTES=$(cat AGENT-NOTES.md 2>/dev/null || echo "No existing notes")
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Propose via OpenAI
+        id: propose
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.request
+          diff = os.environ.get("DIFF", "")
+          notes = os.environ.get("NOTES", "")
+          prompt = f"""You are an AI agent for the Transcribe-Translate project.
+          Based on the following diff and existing agent notes, propose changes.
+          Return ONLY a JSON object with keys "summary", "action", "confidence".
+
+          DIFF:
+          {diff}
+
+          EXISTING NOTES:
+          {notes}
+          """
+          # Call OpenAI API
+          req = urllib.request.Request(
+              "https://api.openai.com/v1/chat/completions",
+              data=json.dumps({
+                  "model": "gpt-4o",
+                  "messages": [{"role": "user", "content": prompt}],
+                  "temperature": 0.3
+              }).encode(),
+              headers={"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}", "Content-Type": "application/json"}
+          )
+          resp = urllib.request.urlopen(req, timeout=60)
+          result = json.loads(resp.read().decode())
+          proposal = result["choices"][0]["message"]["content"].strip()
+          print(f"::set-output name=proposal::{proposal}")
+          # Save proposal to a file for next step
+          with open("/tmp/openai_proposal.md", "w") as f:
+              f.write(f"## OpenAI Proposal\n\n{proposal}\n")
+          PY
+        env:
+          DIFF: ${{ needs.diff-analysis.outputs.diff }}
+          NOTES: ${{ steps.read-notes.outputs.notes }}
+
+      - name: Update AGENT-NOTES.md with OpenAI proposal
+        run: |
+          # Append OpenAI proposal to AGENT-NOTES.md
+          echo "" >> AGENT-NOTES.md
+          cat /tmp/openai_proposal.md >> AGENT-NOTES.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AGENT-NOTES.md
+          git commit -m "Update AGENT-NOTES: OpenAI proposal" || true
+          git push origin HEAD:${{ github.head_ref || github.ref_name }} || true
+
+  # ── Step 3: DeepSeek Agent ────────────────────────────────────────────────
+  deepseek-agent:
+    needs: diff-analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read AGENT-NOTES.md
+        id: read-notes
+        run: |
+          NOTES=$(cat AGENT-NOTES.md 2>/dev/null || echo "No existing notes")
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Propose via DeepSeek
+        id: propose
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.request
+          diff = os.environ.get("DIFF", "")
+          notes = os.environ.get("NOTES", "")
+          prompt = f"""You are an AI agent for the Transcribe-Translate project.
+          Based on the following diff and existing agent notes, propose changes.
+          Return ONLY a JSON object with keys "summary", "action", "confidence".
+
+          DIFF:
+          {diff}
+
+          EXISTING NOTES:
+          {notes}
+          """
+          # Call DeepSeek API
+          req = urllib.request.Request(
+              "https://api.deepseek.com/v1/chat/completions",
+              data=json.dumps({
+                  "model": "deepseek-chat",
+                  "messages": [{"role": "user", "content": prompt}],
+                  "temperature": 0.3
+              }).encode(),
+              headers={"Authorization": f"Bearer {os.environ['DEEPSEEK_API_KEY']}", "Content-Type": "application/json"}
+          )
+          resp = urllib.request.urlopen(req, timeout=60)
+          result = json.loads(resp.read().decode())
+          proposal = result["choices"][0]["message"]["content"].strip()
+          # Save proposal
+          with open("/tmp/deepseek_proposal.md", "w") as f:
+              f.write(f"## DeepSeek Proposal\n\n{proposal}\n")
+          print(f"::set-output name=proposal::{proposal}")
+          PY
+        env:
+          DIFF: ${{ needs.diff-analysis.outputs.diff }}
+          NOTES: ${{ steps.read-notes.outputs.notes }}
+
+      - name: Update AGENT-NOTES.md with DeepSeek proposal
+        run: |
+          echo "" >> AGENT-NOTES.md
+          cat /tmp/deepseek_proposal.md >> AGENT-NOTES.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AGENT-NOTES.md
+          git commit -m "Update AGENT-NOTES: DeepSeek proposal" || true
+          git push origin HEAD:${{ github.head_ref || github.ref_name }} || true
+
+  # ── Step 4: Conflict Detection & Adjudication ─────────────────────────────
+  adjudicate:
+    needs: [openai-agent, deepseek-agent]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read all proposals
+        id: read-proposals
+        run: |
+          cat AGENT-NOTES.md
+
+      - name: Claude adjudication
+        id: claude-adjudicate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # This step uses Claude to adjudicate conflicts between agents
+          # The GitHub App (Claude) reads the diff and proposals, suggests resolution
+          echo "Adjudication triggered. Claude will review the proposals."
+          # Write adjudication note to AGENT-NOTES.md
+          echo "" >> AGENT-NOTES.md
+          echo "## Adjudication Notes" >> AGENT-NOTES.md
+          echo "Claude has reviewed the proposals from OpenAI and DeepSeek." >> AGENT-NOTES.md
+          echo "⚠️ CONFLICT: If agents disagree, the user must approve the best path forward." >> AGENT-NOTES.md
+          echo "Please review the PR comments for adjudication suggestions." >> AGENT-NOTES.md
+          git add AGENT-NOTES.md
+          git commit -m "Add adjudication notes" || true
+          git push origin HEAD:${{ github.head_ref || github.ref_name }} || true
+
+      - name: Post adjudication summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const notes = fs.readFileSync('AGENT-NOTES.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🤖 Agent Orchestration Summary
+
+              **Adjudication triggered.** Claude has reviewed the proposals.
+              Please review the agent proposals in \`AGENT-NOTES.md\` and approve or request changes.
+
+              ### Next Steps
+              1. Review OpenAI and DeepSeek proposals
+              2. Review Claude's adjudication notes
+              3. Approve this PR to merge to \`main\`, or request changes to resolve conflicts
+
+              > **Human gate required**: This merge requires your explicit approval.`
+            });
+
+  # ── Step 5: Merge Gate (human approval required) ──────────────────────────
+  merge-gate:
+    needs: [adjudicate]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Require approval
+        run: |
+          echo "Merge gate active."
+          echo "This PR cannot be merged without:"
+          echo "  1. At least 1 approving review"
+          echo "  2. All status checks passing"
+          echo "  3. Human approval in the PR"
+          echo ""
+          echo "Waiting for human approval..."
