@@ -11,7 +11,7 @@ try {
   if($LASTEXITCODE){throw "Python unit tests FAILED"}
   Write-Host "PASS: Python compileall + unit tests"
   $cfgPath = Join-Path $PSScriptRoot "config.json"
-  $outProbe = python -c "from core.config import load_config; print(load_config(r'$cfgPath').output_dir)"
+  $outProbe = python -c "from pathlib import Path; from core.config import load_config; print(load_config(Path(r'$cfgPath')).output_dir)"
   $outProbe = $outProbe.Trim()
   $rootFull = $PSScriptRoot.TrimEnd('\\') + '\\'
   if($outProbe -like "$rootFull*"){throw "output_dir is inside repo root: $outProbe"}
