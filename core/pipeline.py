@@ -69,17 +69,35 @@ def run_job(source: str, cfg: AppConfig, output_root: Path, progress=print) -> P
             media_hash = sha256_file(media)
             progress(f"Input SHA-256: {media_hash}")
             progress("Extracting 16 kHz mono audio...")
+            # Use the same range calculation for minutes and percentages. If a
+            # percentage range needs media duration and FFmpeg cannot report it,
+            # fail explicitly rather than silently transcribing the full recording.
             limit = None
-            if cfg.range_mode == "minutes" and cfg.range_value > 0:
-                limit = cfg.range_value * 60.0
-            elif cfg.range_mode == "percent" and cfg.range_value > 0:
-                import subprocess, re
+            range_mode = (cfg.range_mode or "full").lower().strip()
+            range_value = float(cfg.range_value or 0)
+            if range_mode != "full" and range_value > 0:
+                import subprocess
                 from .media import find_ffmpeg, WINDOWS_NO_CONSOLE
-                probe = subprocess.run([find_ffmpeg(), "-i", str(media)], capture_output=True, text=True, encoding="utf-8", errors="replace", **WINDOWS_NO_CONSOLE)
-                match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", probe.stderr or "")
-                if match:
-                    total = int(match.group(1))*3600 + int(match.group(2))*60 + float(match.group(3))
-                    limit = total * min(float(cfg.range_value), 100.0) / 100.0
+                probe = subprocess.run(
+                    [find_ffmpeg(), "-i", str(media)],
+                    capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", **WINDOWS_NO_CONSOLE,
+                )
+                match = re.search(
+                    r"Duration:\\s*(\\d+):(\\d+):(\\d+(?:\\.\\d+)?)",
+                    probe.stderr or "",
+                )
+                if not match:
+                    raise RuntimeError(
+                        "Could not determine media duration; refusing to ignore "
+                        "the requested transcription range."
+                    )
+                duration = (
+                    int(match.group(1)) * 3600
+                    + int(match.group(2)) * 60
+                    + float(match.group(3))
+                )
+                limit = _range_seconds(cfg, duration)
             if limit is not None:
                 progress(f"TRANSCRIPTION RANGE: first {limit/60:.2f} minutes only")
             audio = extract_audio(media, work / "audio.wav", limit)
