@@ -1,52 +1,30 @@
-# AGENTS.md - Project Specification & AI Coordination Hand-off
-<!-- SOURCE OF TRUTH: GitHub Repository -->
-<!-- Last Updated: 2026-09-23 -->
+# AGENTS.md — SS Transcribe-Translate
 
-## 1. Project Identity & Architecture
-*   **Project Name:** [Project Name]
-*   **Core Objective:** [1-2 sentences on what this codebase does]
-*   **Tech Stack:** [e.g., Next.js 15, TypeScript, Python FastAPI, PostgreSQL]
-*   **Key Directories:**
-    *   `/src/components`: UI Layer
-    *   `/src/api`: Backend logic
+## Source of truth and workflow
+- Repository: `stevensterkst/Transcribe-Translate`.
+- Default/active integration branch: `master`. Do not assume `main` exists or is authoritative.
+- GitHub is the shared source of truth. Inspect the current branch and working tree before changing code.
+- Preserve user changes. Never use destructive reset/clean operations or overwrite local edits without explicit approval.
+- The application is Windows-native Python/Tkinter with faster-whisper, FFmpeg, yt-dlp and Ollama; packaging uses PyInstaller.
+- Do not silently install, update, remove or replace unrelated software on the user's Windows PC.
+- Keep changes narrow and add deterministic tests/audit assertions where practical.
 
-## 2. Shared Development Workflow (The Multi-AI Rule)
-This project utilizes a dual-engine AI strategy (OpenAI & DeepSeek). To maintain sync:
-1. **GitHub is the absolute Source of Truth.** Never trust a previous chat window's assumption over the actual state of the code on GitHub.
-2. Before writing code, you must read the latest commit changes or request a file export.
-3. **OpenAI Focus:** Architectural design, system prompt engineering, feature planning, and structured layouts.
-4. **DeepSeek Focus:** Math, performance optimization, heavy logical debugging, and deep algorithmic thinking.
+## Verification gates
+- Run `verify-final.ps1` and the Windows EXE build audit.
+- CI source/build success is not an end-to-end real-media result.
+- Do not claim the application is fully verified until `verify-local.ps1` passes with an explicit real media file on the target Windows machine.
+- Important unresolved end-to-end case: a user-reported local `.m4a` previously produced only about 12 seconds of transcript. Compare FFmpeg-reported duration, ASR segment coverage and generated transcript for that exact file before claiming it is resolved.
+- Browser transcript bridge and browser tab-audio capture are unfinished unless subsequent code and tests prove otherwise.
 
-## 3. Current Sprint & State of Play
-*   **Active Branch:** `main` (or `dev-feature-x`)
-*   **Last Successfully Merged Feature:** [e.g., Implemented Auth0 integration]
-*   **Current Bottleneck / Active Task:** [e.g., DB queries are throwing connection pool timeouts]
-*   **Immediate Next Action Item:** [e.g., Optimize the prisma-client connection pooling config]
+## Current implementation notes
+- Caption parsing supports VTT, SRV3, TTML and JSON3.
+- Acquisition is caption-first, then yt-dlp/local media and faster-whisper fallback.
+- Primary transcript output is persisted before Ollama summary/translation stages so later AI failures do not erase the transcript.
+- Local ASR uses bounded windows and coverage/timestamp checks; verify the current implementation and tests before changing it.
+- Range selection is full / first N minutes / first N percent. Local-media extraction must fail explicitly if a requested non-full range cannot be safely calculated; it must not silently process the full recording.
+- AUTO caption selection and manual-track preferences are covered by regression tests; inspect the current tests before changing selection behavior.
+- English summary generation follows the source-language summary and has an English-language acceptance check/retry; verify current code/tests before modifying it.
 
-## 4. Code Style & Technical Constraints
-*   **Formatting:** [e.g., Prettier defaults, strict TypeScript, no `any`]
-*   **Testing Protocol:** Run `npm run test` before declaring code "complete". All business logic must have unit tests.
-*   **Explicit Boundaries:** Do not alter configuration files (`package.json`, `.env.example`) without explicit permission.
-
-## SS TRANSCRIBE-TRANSLATE PROJECT OVERRIDES
-- This repository is the source of truth for the Windows-native SS Transcribe-Translate application.
-- The application is Python/Tkinter + faster-whisper + FFmpeg + yt-dlp + Ollama, packaged with PyInstaller.
-- Before any code change, inspect the current `main` branch and preserve existing working features.
-- OpenAI and DeepSeek are cooperating engineering agents; neither may treat the other agent's claims as verified until the relevant GitHub code/tests prove them.
-- Every substantive feature must have a deterministic test or audit assertion where practical.
-- Never silently install, update, remove, or replace unrelated software on the user's Windows PC.
-- Do not claim the application is final until the source audit, Windows build audit, and an end-to-end real-media test pass.
-- Record important architecture/feature changes in this file so the next agent can resume from GitHub without relying on chat history.
-
-## CURRENT SS TRANSCRIBE-TRANSLATE STATE
-- Caption parsing supports VTT, SRV3, TTML and JSON3 with regression tests.
-- Acquisition is caption-first, then yt-dlp/local-media + faster-whisper fallback.
-- AUTO caption selection no longer gives an unexplained preference to English; manual tracks are preferred when otherwise equivalent.
-- The primary transcript is persisted immediately after acquisition/ASR and before any Ollama stage. Downstream AI failure cannot erase it.
-- Local ASR uses faster-whisper BatchedInferencePipeline in bounded 180-second windows, with VAD first and a no-VAD retry when a window is empty or suspiciously under-covered.
-- Local ASR now reports an explicit window coverage plan/completion and rejects invalid final timestamps.
-- The selected range remains full / first N minutes / first N percent and is applied to remote captions or FFmpeg extraction.
-- Browser transcript bridge and browser tab-audio capture remain explicitly unfinished; do not claim them as implemented until committed and verified.
-- English summary generation is downstream of the source-language summary and has an English-language acceptance check/retry.
-- The current definition of final verification remains: verify-final.ps1 + Windows EXE build + verify-local.ps1 with an explicit real media file. CI uses the source/build gate.
-- IMPORTANT OPEN TEST: a real user-reported local .m4a previously produced only a ~12-second transcript segment. The repository cannot determine whether the source file itself was only ~29 seconds or whether ASR lost audio without running against that exact Windows file. Do not claim this case is solved until the exact file is re-tested and its FFmpeg duration is compared with ASR coverage/output.
+## Change discipline
+- Distinguish source/build verification from real-media end-to-end verification in reports.
+- Record newly verified changes and remaining blockers here; do not turn unverified assumptions into project facts.
