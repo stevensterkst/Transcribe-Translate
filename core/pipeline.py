@@ -39,6 +39,13 @@ def sha256_file(path: Path) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
+def _parse_media_duration(stderr: str) -> float | None:
+    """Parse FFmpeg's reported HH:MM:SS duration, or return None if absent."""
+    import re
+    match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", stderr or "")
+    if not match:
+        return None
+    return int(match.group(1)) * 3600 + int(match.group(2)) * 60 + float(match.group(3))
 def _range_seconds(cfg: AppConfig, duration: float) -> float | None:
     mode = (cfg.range_mode or "full").lower().strip()
     value = float(cfg.range_value or 0)
@@ -83,20 +90,12 @@ def run_job(source: str, cfg: AppConfig, output_root: Path, progress=print) -> P
                     capture_output=True, text=True, encoding="utf-8",
                     errors="replace", **WINDOWS_NO_CONSOLE,
                 )
-                match = re.search(
-                    r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)",
-                    probe.stderr or "",
-                )
-                if not match:
+                duration = _parse_media_duration(probe.stderr or "")
+                if duration is None:
                     raise RuntimeError(
                         "Could not determine media duration; refusing to ignore "
                         "the requested transcription range."
                     )
-                duration = (
-                    int(match.group(1)) * 3600
-                    + int(match.group(2)) * 60
-                    + float(match.group(3))
-                )
                 limit = _range_seconds(cfg, duration)
             if limit is not None:
                 progress(f"TRANSCRIPTION RANGE: first {limit/60:.2f} minutes only")
