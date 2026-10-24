@@ -84,7 +84,7 @@ def run_job(source: str, cfg: AppConfig, output_root: Path, progress=print) -> P
                     errors="replace", **WINDOWS_NO_CONSOLE,
                 )
                 match = re.search(
-                    r"Duration:\\s*(\\d+):(\\d+):(\\d+(?:\\.\\d+)?)",
+                    r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)",
                     probe.stderr or "",
                 )
                 if not match:
