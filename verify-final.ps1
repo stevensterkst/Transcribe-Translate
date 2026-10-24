@@ -117,6 +117,10 @@ print("runtime imports OK")
   $launcher=Get-Content START-APP.vbs -Raw
   if($launcher -match "git -C"){throw "Start launcher must not run git pull on every application launch"}
   if($launcher -notmatch 'SS-Transcribe-Translate\.exe'){throw "Start launcher does not target packaged EXE"}
+  $shortcutInstaller=Get-Content INSTALL-TASKBAR-SHORTCUT.ps1 -Raw
+  if($shortcutInstaller -notmatch '\$desktopShortcut\s*='){throw "Desktop shortcut creation missing"}
+  if($shortcutInstaller -notmatch '\$sc\.TargetPath\s*=\s*\$exe'){throw "Shortcut installer does not target the verified EXE directly"}
+  if($shortcutInstaller -notmatch '\$check\.TargetPath\s*-ne\s*\$exe'){throw "Shortcut target verification missing"}
   if((Get-Content START-APP.vbs -Raw) -notmatch 'exePath'){throw "Launcher EXE path declaration missing"}
   if(!(Test-Path "CONSOLE.cmd")){throw "Console launcher missing"}
   if(!(Test-Path "AGENTS.md")){throw "AGENTS.md missing"}
