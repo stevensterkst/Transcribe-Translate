@@ -59,7 +59,7 @@ if (Test-Path -LiteralPath $taskbarDir) {
 
 Write-Host "PASS: Start Menu shortcut: $startShortcut"
 Write-Host "PASS: Desktop shortcut: $desktopShortcut"
-Write-Host "PASS: both launch through wscript.exe -> START-APP.vbs (no console window)."
+Write-Host "PASS: both point directly to the packaged --windowed EXE (no console window)."
 if ($taskbarUpdated) {
     Write-Host "PASS: existing matching pinned shortcut file updated: $taskbarDir"
     Write-Host "If its displayed icon/target remains cached, unpin that old icon and pin 'SS Transcribe-Translate' from Start Menu."
