@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core.config import AppConfig
-from core.pipeline import _parse_media_duration, _range_seconds
+from core.pipeline import _parse_media_duration, _range_seconds, _requested_range_seconds
 
 class RangeTests(unittest.TestCase):
     def test_parse_ffmpeg_duration(self):
@@ -14,6 +14,18 @@ class RangeTests(unittest.TestCase):
     def test_missing_ffmpeg_duration_returns_none(self):
         self.assertIsNone(_parse_media_duration("Input #0, m4a, from media:\n  Stream #0:0: Audio: aac"))
 
+    def test_minutes_range_does_not_need_duration_probe(self):
+        self.assertEqual(_requested_range_seconds(AppConfig(range_mode="minutes", range_value=5)), 300)
+
+    def test_percent_range_requires_duration_probe(self):
+        with self.assertRaisesRegex(RuntimeError, "percentage transcription range"):
+            _requested_range_seconds(AppConfig(range_mode="percent", range_value=50), "Duration: N/A")
+
+    def test_percent_range_uses_ffmpeg_duration(self):
+        self.assertAlmostEqual(
+            _requested_range_seconds(AppConfig(range_mode="percent", range_value=50), "Duration: 00:12:34.56"),
+            377.28,
+        )
     def test_full(self):
         self.assertIsNone(_range_seconds(AppConfig(range_mode="full", range_value=50), 600))
     def test_first_minutes(self):
