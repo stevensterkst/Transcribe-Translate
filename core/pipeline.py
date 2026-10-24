@@ -48,6 +48,23 @@ def _parse_media_duration(stderr: str) -> float | None:
     return int(match.group(1)) * 3600 + int(match.group(2)) * 60 + float(match.group(3))
 
 
+def _requested_range_seconds(cfg: AppConfig, ffmpeg_stderr: str = "") -> float | None:
+    """Calculate a requested limit; minutes do not depend on a duration probe."""
+    mode = (cfg.range_mode or "full").lower().strip()
+    value = float(cfg.range_value or 0)
+    if mode == "full" or value <= 0:
+        return None
+    if mode == "minutes":
+        return value * 60.0
+    if mode == "percent":
+        duration = _parse_media_duration(ffmpeg_stderr)
+        if duration is None:
+            raise RuntimeError(
+                "Could not determine media duration; refusing to ignore "
+                "the requested percentage transcription range."
+            )
+        return _range_seconds(cfg, duration)
+    raise ValueError("range_mode must be full, minutes, or percent")
 def _range_seconds(cfg: AppConfig, duration: float) -> float | None:
     mode = (cfg.range_mode or "full").lower().strip()
     value = float(cfg.range_value or 0)
@@ -87,18 +104,19 @@ def run_job(source: str, cfg: AppConfig, output_root: Path, progress=print) -> P
             if range_mode != "full" and range_value > 0:
                 import subprocess
                 from .media import find_ffmpeg, WINDOWS_NO_CONSOLE
-                probe = subprocess.run(
-                    [find_ffmpeg(), "-i", str(media)],
-                    capture_output=True, text=True, encoding="utf-8",
-                    errors="replace", **WINDOWS_NO_CONSOLE,
-                )
-                duration = _parse_media_duration(probe.stderr or "")
-                if duration is None:
-                    raise RuntimeError(
-                        "Could not determine media duration; refusing to ignore "
-                        "the requested transcription range."
+                # Minute limits can be applied directly; only percentage limits
+                # need a duration probe.
+                if range_mode == "minutes":
+                    limit = range_value * 60.0
+                elif range_mode == "percent":
+                    probe = subprocess.run(
+                        [find_ffmpeg(), "-i", str(media)],
+                        capture_output=True, text=True, encoding="utf-8",
+                        errors="replace", **WINDOWS_NO_CONSOLE,
                     )
-                limit = _range_seconds(cfg, duration)
+                    limit = _requested_range_seconds(cfg, probe.stderr or "")
+                else:
+                    limit = _requested_range_seconds(cfg)
             if limit is not None:
                 progress(f"TRANSCRIPTION RANGE: first {limit/60:.2f} minutes only")
             audio = extract_audio(media, work / "audio.wav", limit)
