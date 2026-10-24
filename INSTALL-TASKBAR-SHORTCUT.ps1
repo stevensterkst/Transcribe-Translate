@@ -1,35 +1,31 @@
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path -LiteralPath $PSScriptRoot).Path
-$launcher = Join-Path $root "START-APP.vbs"
-$cmdFallback = Join-Path $root "START-APP.cmd"
 $icon = Join-Path $root "SS-Transcribe-Translate.ico"
-$exe = Join-Path $root "dist\SS-Transcribe-Translate\SS-Transcribe-Translate.exe"
-
-if (-not (Test-Path -LiteralPath $launcher)) {
-    throw "Silent launcher missing: $launcher"
+$exe = Join-Path $root "SS-Transcribe-Translate.exe"
+if (-not (Test-Path -LiteralPath $exe)) {
+    $exe = Join-Path $root "dist\SS-Transcribe-Translate\SS-Transcribe-Translate.exe"
 }
-if (-not (Test-Path -LiteralPath $exe) -and -not (Test-Path -LiteralPath $cmdFallback)) {
-    throw "Neither packaged EXE nor fallback launcher exists under $root"
+if (-not (Test-Path -LiteralPath $exe)) {
+    throw "Packaged EXE not found. Extract the complete Windows bundle first. Checked: $root and dist\SS-Transcribe-Translate."
 }
-
+$exe = (Resolve-Path -LiteralPath $exe).Path
+$working = Split-Path -Parent $exe
 $wsh = New-Object -ComObject WScript.Shell
-$wscript = Join-Path $env:SystemRoot "System32\wscript.exe"
 $startMenu = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\SS Transcribe-Translate"
 $desktop = [Environment]::GetFolderPath("Desktop")
 New-Item -ItemType Directory -Force -Path $startMenu | Out-Null
 
 function Set-SSShortcut([string]$Path) {
     $sc = $wsh.CreateShortcut($Path)
-    $sc.TargetPath = $wscript
-    $sc.Arguments = ('"{0}"' -f $launcher)
-    $sc.WorkingDirectory = $root
-    $sc.Description = "SS Transcribe-Translate — silent GUI launcher"
+    $sc.TargetPath = $exe
+    $sc.Arguments = ""
+    $sc.WorkingDirectory = $working
+    $sc.Description = "SS Transcribe-Translate — verified Windows GUI"
     if (Test-Path -LiteralPath $icon) { $sc.IconLocation = "$icon,0" }
-    elseif (Test-Path -LiteralPath $exe) { $sc.IconLocation = "$exe,0" }
-    else { $sc.IconLocation = "$env:SystemRoot\System32\SHELL32.dll,167" }
+    else { $sc.IconLocation = "$exe,0" }
     $sc.Save()
     $check = $wsh.CreateShortcut($Path)
-    if ($check.TargetPath -ne $wscript -or $check.Arguments -ne ('"{0}"' -f $launcher)) {
+    if ($check.TargetPath -ne $exe -or $check.Arguments -ne "" -or $check.WorkingDirectory -ne $working) {
         throw "Shortcut verification failed: $Path"
     }
 }
@@ -39,16 +35,14 @@ $desktopShortcut = Join-Path $desktop "SS Transcribe-Translate.lnk"
 Set-SSShortcut $startShortcut
 Set-SSShortcut $desktopShortcut
 
-# Update an existing pinned taskbar shortcut if one of the known legacy names
-# or targets is present. Windows may cache pinned shortcut metadata; do not
-# claim it was pinned unless the resulting target is verified.
+# Windows controls pinning. We can repair existing shortcut files, but do not
+# claim a taskbar pin succeeded merely because a file was copied.
 $taskbarDir = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
 $taskbarUpdated = $false
 if (Test-Path -LiteralPath $taskbarDir) {
-    $oldLinks = Get-ChildItem -LiteralPath $taskbarDir -Filter "*.lnk" -File -ErrorAction SilentlyContinue
-    foreach ($old in $oldLinks) {
+    foreach ($old in (Get-ChildItem -LiteralPath $taskbarDir -Filter "*.lnk" -File -ErrorAction SilentlyContinue)) {
         $oldSc = $wsh.CreateShortcut($old.FullName)
-        $isOurs = $old.BaseName -match "^(Transcription|Transcribe-Translate|SS Transcribe-Translate)$" -or
+        $isOurs = $old.BaseName -match "(?i)^(Transcription|Transcribe-Translate|SS Transcribe-Translate)$" -or
             $oldSc.TargetPath -match "(?i)transcribe-translate|START-APP\.(cmd|vbs)"
         if ($isOurs) {
             Set-SSShortcut $old.FullName
@@ -56,15 +50,13 @@ if (Test-Path -LiteralPath $taskbarDir) {
         }
     }
 }
-
-Write-Host "PASS: Start Menu shortcut: $startShortcut"
-Write-Host "PASS: Desktop shortcut: $desktopShortcut"
-Write-Host "PASS: both point directly to the packaged --windowed EXE (no console window)."
+Write-Host "PASS: Start Menu shortcut verified: $startShortcut"
+Write-Host "PASS: Desktop shortcut verified: $desktopShortcut"
+Write-Host "PASS: direct target = $exe"
 if ($taskbarUpdated) {
-    Write-Host "PASS: existing matching pinned shortcut file updated: $taskbarDir"
-    Write-Host "If its displayed icon/target remains cached, unpin that old icon and pin 'SS Transcribe-Translate' from Start Menu."
+    Write-Host "PASS: existing matching taskbar shortcut file updated."
+    Write-Host "If Windows still displays stale cached metadata, unpin the old icon and pin the Start Menu entry."
 } else {
-    Write-Host "INFO: no existing matching pinned shortcut was found to update."
-    Write-Host "Pin 'SS Transcribe-Translate' from Start Menu to the taskbar; Windows controls taskbar pinning."
+    Write-Host "INFO: no matching pinned taskbar shortcut found. Pin 'SS Transcribe-Translate' from Start Menu."
 }
-Write-Host "Launcher root: $root"
+Write-Host "Working directory: $working"
