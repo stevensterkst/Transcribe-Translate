@@ -53,6 +53,9 @@ if(Test-Path "runtime\deno.exe"){
   Copy-Item "runtime\deno.exe" (Join-Path $bundle "runtime\deno.exe") -Force
 }
 if(Test-Path "SS-Transcribe-Translate.ico"){Copy-Item "SS-Transcribe-Translate.ico" $bundle -Force}
+# Include the shortcut installer in the distributable so extracted users can repair
+# desktop and Start Menu shortcuts without requiring the source checkout.
+Copy-Item "INSTALL-TASKBAR-SHORTCUT.ps1" $bundle -Force
 
 $exe=Join-Path $bundle "SS-Transcribe-Translate.exe"
 if(!(Test-Path $exe)){throw "Windows EXE missing after build."}
