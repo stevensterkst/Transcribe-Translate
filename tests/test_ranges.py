@@ -13,6 +13,7 @@ class RangeTests(unittest.TestCase):
 
     def test_missing_ffmpeg_duration_returns_none(self):
         self.assertIsNone(_parse_media_duration("Input #0, m4a, from media:\\n  Stream #0:0: Audio: aac"))
+
     def test_full(self):
         self.assertIsNone(_range_seconds(AppConfig(range_mode="full", range_value=50), 600))
     def test_first_minutes(self):
