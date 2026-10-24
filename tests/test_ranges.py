@@ -8,11 +8,11 @@ from core.pipeline import _parse_media_duration, _range_seconds
 
 class RangeTests(unittest.TestCase):
     def test_parse_ffmpeg_duration(self):
-        sample = "Input #0, mov,mp4, from media:\\n  Duration: 00:12:34.56, start: 0.000000, bitrate: 128 kb/s"
+        sample = "Input #0, mov,mp4, from media:\n  Duration: 00:12:34.56, start: 0.000000, bitrate: 128 kb/s"
         self.assertAlmostEqual(_parse_media_duration(sample), 754.56)
 
     def test_missing_ffmpeg_duration_returns_none(self):
-        self.assertIsNone(_parse_media_duration("Input #0, m4a, from media:\\n  Stream #0:0: Audio: aac"))
+        self.assertIsNone(_parse_media_duration("Input #0, m4a, from media:\n  Stream #0:0: Audio: aac"))
 
     def test_full(self):
         self.assertIsNone(_range_seconds(AppConfig(range_mode="full", range_value=50), 600))
