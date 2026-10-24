@@ -6,7 +6,7 @@ name: Multi-Agent Orchestration
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
     types: [opened, synchronize, reopened]
   push:
     branches: [feature/*]
@@ -35,7 +35,7 @@ jobs:
             echo "base-ref=${{ github.base_ref }}" >> $GITHUB_OUTPUT
             echo "head-ref=${{ github.head_ref }}" >> $GITHUB_OUTPUT
           else
-            echo "base-ref=origin/main" >> $GITHUB_OUTPUT
+            echo "base-ref=origin/master" >> $GITHUB_OUTPUT
             echo "head-ref=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
@@ -73,6 +73,8 @@ jobs:
         id: propose
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DIFF: ${{ needs.diff-analysis.outputs.diff }}
+          NOTES: ${{ steps.read-notes.outputs.notes }}
         run: |
           python3 - <<'PY'
           import os, json, urllib.request
@@ -106,9 +108,6 @@ jobs:
           with open("/tmp/openai_proposal.md", "w") as f:
               f.write(f"## OpenAI Proposal\n\n{proposal}\n")
           PY
-        env:
-          DIFF: ${{ needs.diff-analysis.outputs.diff }}
-          NOTES: ${{ steps.read-notes.outputs.notes }}
 
       - name: Update AGENT-NOTES.md with OpenAI proposal
         run: |
@@ -141,6 +140,8 @@ jobs:
         id: propose
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DIFF: ${{ needs.diff-analysis.outputs.diff }}
+          NOTES: ${{ steps.read-notes.outputs.notes }}
         run: |
           python3 - <<'PY'
           import os, json, urllib.request
@@ -174,9 +175,6 @@ jobs:
               f.write(f"## DeepSeek Proposal\n\n{proposal}\n")
           print(f"::set-output name=proposal::{proposal}")
           PY
-        env:
-          DIFF: ${{ needs.diff-analysis.outputs.diff }}
-          NOTES: ${{ steps.read-notes.outputs.notes }}
 
       - name: Update AGENT-NOTES.md with DeepSeek proposal
         run: |
