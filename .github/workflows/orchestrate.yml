@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches:
+      - master
       - 'feature/**'
       - 'repair/**'
   workflow_dispatch:
