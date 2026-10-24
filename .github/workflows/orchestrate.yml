@@ -116,7 +116,8 @@ jobs:
           resp = urllib.request.urlopen(req, timeout=60)
           result = json.loads(resp.read().decode())
           proposal = result["choices"][0]["message"]["content"].strip()
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:\n              out.write("proposal<<EOF\\n" + proposal + "\\nEOF\\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("proposal<<EOF\n" + proposal + "\nEOF\n")
           # Save proposal to a file for next step
           with open("/tmp/openai_proposal.md", "w") as f:
               f.write(f"## OpenAI Proposal\n\n{proposal}\n")
@@ -193,7 +194,8 @@ jobs:
           # Save proposal
           with open("/tmp/deepseek_proposal.md", "w") as f:
               f.write(f"## DeepSeek Proposal\n\n{proposal}\n")
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:\n              out.write("proposal<<EOF\\n" + proposal + "\\nEOF\\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("proposal<<EOF\n" + proposal + "\nEOF\n")
           PY
 
       - name: Update AGENT-NOTES.md with DeepSeek proposal
