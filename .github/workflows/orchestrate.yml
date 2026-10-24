@@ -42,11 +42,17 @@ jobs:
       - name: Get PR diff
         id: get-diff
         run: |
-          # Fetch full diff between base and head
-          git fetch origin ${{ github.base_ref }} --depth=1 2>/dev/null || true
-          git fetch origin ${{ github.head_ref }} --depth=1 2>/dev/null || true
-          git diff origin/${{ github.base_ref }}...HEAD 2>/dev/null > /tmp/diff.txt || true
-          git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null >> /tmp/diff.txt || true
+          # Compare the checked-out commit with the target branch for PRs or pushes.
+          BASE_REF="${{ github.base_ref || 'master' }}"
+          HEAD_REF="${{ github.head_ref || github.ref_name }}"
+          git fetch origin "$BASE_REF" --depth=1
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff "origin/$BASE_REF...HEAD" > /tmp/diff.txt
+            git diff --name-only "origin/$BASE_REF...HEAD" >> /tmp/diff.txt
+          else
+            git diff "origin/$BASE_REF..HEAD" > /tmp/diff.txt
+            git diff --name-only "origin/$BASE_REF..HEAD" >> /tmp/diff.txt
+          fi
           echo "diff<<EOF" >> $GITHUB_OUTPUT
           cat /tmp/diff.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -90,6 +96,13 @@ jobs:
           EXISTING NOTES:
           {notes}
           """
+          if not os.environ.get("OPENAI_API_KEY"):
+              proposal = '{"summary":"Skipped: OPENAI_API_KEY secret is not configured","action":"manual review required","confidence":0}'
+              with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+                  out.write("proposal<<EOF\\n" + proposal + "\\nEOF\\n")
+              with open("/tmp/openai_proposal.md", "w") as f:
+                  f.write("## OpenAI Proposal\\n\\n" + proposal + "\\n")
+              raise SystemExit(0)
           # Call OpenAI API
           req = urllib.request.Request(
               "https://api.openai.com/v1/chat/completions",
@@ -103,7 +116,7 @@ jobs:
           resp = urllib.request.urlopen(req, timeout=60)
           result = json.loads(resp.read().decode())
           proposal = result["choices"][0]["message"]["content"].strip()
-          print(f"::set-output name=proposal::{proposal}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:\n              out.write("proposal<<EOF\\n" + proposal + "\\nEOF\\n")
           # Save proposal to a file for next step
           with open("/tmp/openai_proposal.md", "w") as f:
               f.write(f"## OpenAI Proposal\n\n{proposal}\n")
@@ -157,6 +170,13 @@ jobs:
           EXISTING NOTES:
           {notes}
           """
+          if not os.environ.get("DEEPSEEK_API_KEY"):
+              proposal = '{"summary":"Skipped: DEEPSEEK_API_KEY secret is not configured","action":"manual review required","confidence":0}'
+              with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+                  out.write("proposal<<EOF\\n" + proposal + "\\nEOF\\n")
+              with open("/tmp/deepseek_proposal.md", "w") as f:
+                  f.write("## DeepSeek Proposal\\n\\n" + proposal + "\\n")
+              raise SystemExit(0)
           # Call DeepSeek API
           req = urllib.request.Request(
               "https://api.deepseek.com/v1/chat/completions",
