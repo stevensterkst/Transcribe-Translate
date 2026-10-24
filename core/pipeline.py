@@ -46,6 +46,8 @@ def _parse_media_duration(stderr: str) -> float | None:
     if not match:
         return None
     return int(match.group(1)) * 3600 + int(match.group(2)) * 60 + float(match.group(3))
+
+
 def _range_seconds(cfg: AppConfig, duration: float) -> float | None:
     mode = (cfg.range_mode or "full").lower().strip()
     value = float(cfg.range_value or 0)
