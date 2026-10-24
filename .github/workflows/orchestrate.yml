@@ -193,7 +193,7 @@ jobs:
           # Save proposal
           with open("/tmp/deepseek_proposal.md", "w") as f:
               f.write(f"## DeepSeek Proposal\n\n{proposal}\n")
-          print(f"::set-output name=proposal::{proposal}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:\n              out.write("proposal<<EOF\\n" + proposal + "\\nEOF\\n")
           PY
 
       - name: Update AGENT-NOTES.md with DeepSeek proposal
